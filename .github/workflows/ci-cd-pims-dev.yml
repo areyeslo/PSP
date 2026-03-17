@@ -135,7 +135,7 @@ jobs:
           }
 
           extract_itemgroups() {
-            sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | tr -d '[:space:]'
+            sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | grep '<PackageReference' | sed 's/^ *//'
           }
 
           for file in $tracked_files; do
