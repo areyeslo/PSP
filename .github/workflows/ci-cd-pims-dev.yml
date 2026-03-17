@@ -90,8 +90,8 @@ jobs:
 
     outputs:
       deps_changed: ${{ steps.detect.outputs.deps_changed }}
-      last_sha: ${{ steps.detect.outputs.last_sha }}
-      changed_files: ${{ steps.detect.outputs.changed_files }}
+      # last_sha: ${{ steps.detect.outputs.last_sha }}
+      # changed_files: ${{ steps.detect.outputs.changed_files }}
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -129,7 +129,7 @@ jobs:
             '**/*.props')
 
           deps_changed=false
-          changed_files=()
+          # changed_files=()
 
           extract_node_deps() {
             jq '{
@@ -160,13 +160,13 @@ jobs:
               old=$(echo "$old_raw" | extract_node_deps)
               new=$(echo "$new_raw" | extract_node_deps)
 
-              if [[ "$old" != "$new" ]]; then
-                echo "Node dependency change detected in $file"
-                deps_changed=true
-                changed_files+=("$file")
-              else
-                echo "No dependency/devDependency change in $file"
-              fi
+              # if [[ "$old" != "$new" ]]; then
+              #   echo "Node dependency change detected in $file"
+              #   deps_changed=true
+              #   changed_files+=("$file")
+              # else
+              #   echo "No dependency/devDependency change in $file"
+              # fi
 
             ############################################
             # .csproj / .props
@@ -176,80 +176,93 @@ jobs:
               old=$(echo "$old_raw" | extract_itemgroups)
               new=$(echo "$new_raw" | extract_itemgroups)
 
-              if [[ "$old" != "$new" ]]; then
-                echo "ItemGroup change detected in $file"
-                deps_changed=true
-                changed_files+=("$file")
-              else
-                echo "No ItemGroup change in $file"
-              fi
+              # if [[ "$old" != "$new" ]]; then
+              #   echo "ItemGroup change detected in $file"
+              #   deps_changed=true
+              #   changed_files+=("$file")
+              # else
+              #   echo "No ItemGroup change in $file"
+              # fi
+            fi
+            ############################################
+            # Show diff
+            ############################################
+            diff_output=$(diff -u <(echo "$old") <(echo "$new") || true)
+
+            if [[ -n "$diff_output" ]]; then
+              deps_changed=true
+              echo ""
+              echo "=============================="
+              echo "Semantic diff for $file"
+              echo "=============================="
+              echo "$diff_output"
             fi
           done
 
           echo "deps_changed=$deps_changed" >> "$GITHUB_OUTPUT"
 
           json=$(printf '%s\n' "${changed_files[@]}" | jq -R . | jq -s -c .)
-          echo "changed_files=$json" >> "$GITHUB_OUTPUT"
-          echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
+          # echo "changed_files=$json" >> "$GITHUB_OUTPUT"
+          # echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      # - uses: actions/checkout@v4
+      #   with:
+      #     fetch-depth: 0
 
-      - name: Show diff for changed dependency files
-        if: ${{ steps.detect.outputs.deps_changed == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          LAST_SHA='${{ steps.detect.outputs.last_sha }}'
-          files='${{ steps.detect.outputs.changed_files }}'
-          echo "Changed files: $files"
-          # echo "Fetching LAST_SHA if missing..."
-          # git fetch origin "$LAST_SHA" --depth=1 || echo "Already exists or not found"
+      # - name: Show diff for changed dependency files
+      #   if: ${{ steps.detect.outputs.deps_changed == 'true' }}
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: |
+      #     LAST_SHA='${{ steps.detect.outputs.last_sha }}'
+      #     files='${{ steps.detect.outputs.changed_files }}'
+      #     echo "Changed files: $files"
+      #     # echo "Fetching LAST_SHA if missing..."
+      #     # git fetch origin "$LAST_SHA" --depth=1 || echo "Already exists or not found"
 
-          echo "$files" | jq -r '.[]' | while read file; do
-            echo ""
-            echo "=============================="
-            echo "Semantic diff for $file"
-            echo "=============================="
+      #     echo "$files" | jq -r '.[]' | while read file; do
+      #       echo ""
+      #       echo "=============================="
+      #       echo "Semantic diff for $file"
+      #       echo "=============================="
 
-            old_raw=$(git show "$LAST_SHA:$file" 2>/dev/null || true)
-            new_raw=$(git show "HEAD:$file" 2>/dev/null || true)
+      #       old_raw=$(git show "$LAST_SHA:$file" 2>/dev/null || true)
+      #       new_raw=$(git show "HEAD:$file" 2>/dev/null || true)
 
-            ############################################
-            # package.json / package-lock.json
-            ############################################
-            if [[ "$file" == *package.json || "$file" == *package-lock.json ]]; then
+      #       ############################################
+      #       # package.json / package-lock.json
+      #       ############################################
+      #       if [[ "$file" == *package.json || "$file" == *package-lock.json ]]; then
 
-              old=$(echo "$old_raw" | jq '{
-                dependencies: (.dependencies // {}),
-                devDependencies: (.devDependencies // {})
-              }' -S 2>/dev/null || echo '{}')
+      #         old=$(echo "$old_raw" | jq '{
+      #           dependencies: (.dependencies // {}),
+      #           devDependencies: (.devDependencies // {})
+      #         }' -S 2>/dev/null || echo '{}')
 
-              new=$(echo "$new_raw" | jq '{
-                dependencies: (.dependencies // {}),
-                devDependencies: (.devDependencies // {})
-              }' -S 2>/dev/null || echo '{}')
+      #         new=$(echo "$new_raw" | jq '{
+      #           dependencies: (.dependencies // {}),
+      #           devDependencies: (.devDependencies // {})
+      #         }' -S 2>/dev/null || echo '{}')
 
-            ############################################
-            # .csproj / .props
-            ############################################
-            else
-              old=$(echo "$old_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | tr -d '[:space:]')
-              new=$(echo "$new_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | tr -d '[:space:]')
-            fi
+      #       ############################################
+      #       # .csproj / .props
+      #       ############################################
+      #       else
+      #         old=$(echo "$old_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p')
+      #         new=$(echo "$new_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p')
+      #       fi
 
-            ############################################
-            # Show diff
-            ############################################
-            diff_output=$(diff -u <(echo "$old") <(echo "$new") || true)
+      #       ############################################
+      #       # Show diff
+      #       ############################################
+      #       diff_output=$(diff -u <(echo "$old") <(echo "$new") || true)
 
-            if [[ -z "$diff_output" ]]; then
-              echo "No semantic differences"
-            else
-              echo "$diff_output"
-            fi
-          done
+      #       if [[ -z "$diff_output" ]]; then
+      #         echo "No semantic differences"
+      #       else
+      #         echo "$diff_output"
+      #       fi
+      #     done
 
   scan-images:
     name: Scan container images for vulnerabilities
