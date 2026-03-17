@@ -203,15 +203,52 @@ jobs:
         run: |
           LAST_SHA='${{ steps.detect.outputs.last_sha }}'
           files='${{ steps.detect.outputs.changed_files }}'
+          echo "Changed files: $files"
           # echo "Fetching LAST_SHA if missing..."
           # git fetch origin "$LAST_SHA" --depth=1 || echo "Already exists or not found"
 
           echo "$files" | jq -r '.[]' | while read file; do
             echo ""
             echo "=============================="
-            echo "Diff for $file"
+            echo "Semantic diff for $file"
             echo "=============================="
-            git diff "$LAST_SHA" HEAD -- "$file"
+
+            old_raw=$(git show "$LAST_SHA:$file" 2>/dev/null || true)
+            new_raw=$(git show "HEAD:$file" 2>/dev/null || true)
+
+            ############################################
+            # package.json / package-lock.json
+            ############################################
+            if [[ "$file" == *package.json || "$file" == *package-lock.json ]]; then
+
+              old=$(echo "$old_raw" | jq '{
+                dependencies: (.dependencies // {}),
+                devDependencies: (.devDependencies // {})
+              }' -S 2>/dev/null || echo '{}')
+
+              new=$(echo "$new_raw" | jq '{
+                dependencies: (.dependencies // {}),
+                devDependencies: (.devDependencies // {})
+              }' -S 2>/dev/null || echo '{}')
+
+            ############################################
+            # .csproj / .props
+            ############################################
+            else
+              old=$(echo "$old_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | tr -d '[:space:]')
+              new=$(echo "$new_raw" | sed -n '/<ItemGroup>/,/<\/ItemGroup>/p' | tr -d '[:space:]')
+            fi
+
+            ############################################
+            # Show diff
+            ############################################
+            diff_output=$(diff -u <(echo "$old") <(echo "$new") || true)
+
+            if [[ -z "$diff_output" ]]; then
+              echo "No semantic differences"
+            else
+              echo "$diff_output"
+            fi
           done
 
   scan-images:
