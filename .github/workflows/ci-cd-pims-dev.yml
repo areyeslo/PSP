@@ -27,6 +27,7 @@ env:
   TAG_TEST: "test"
   TAG_PROD: "prod"
   DEPLOYMENT_NAMESPACE: "3cd915-dev"
+  WORKFLOW_NAME: "${{ github.workflow }}"
 
 on:
   workflow_dispatch:
@@ -99,8 +100,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "WORKFLOW_NAME: $WORKFLOW_NAME"
           RUNS=$(gh run list \
-            --workflow "CI-CD PIMS Development" \
+            --workflow "${{ env.WORKFLOW_NAME }}" \
             --status success \
             --limit 1 \
             --json headSha)
