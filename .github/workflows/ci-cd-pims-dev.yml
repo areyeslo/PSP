@@ -119,9 +119,6 @@ jobs:
           echo "Last successful run SHA: $LAST_SHA"
           echo "Current SHA: $(git rev-parse HEAD)"
 
-          # git fetch origin "$LAST_SHA" --depth=1 || echo "LAST_SHA already present"
-          # git fetch origin "${GITHUB_REF_NAME}" --depth=2
-
           tracked_files=$(git ls-files \
             '**/package.json' \
             '**/package-lock.json' \
@@ -129,7 +126,6 @@ jobs:
             '**/*.props')
 
           deps_changed=false
-          # changed_files=()
 
           extract_node_deps() {
             jq '{
@@ -159,31 +155,14 @@ jobs:
             if [[ "$file" == *package.json || "$file" == *package-lock.json ]]; then
               old=$(echo "$old_raw" | extract_node_deps)
               new=$(echo "$new_raw" | extract_node_deps)
-
-              # if [[ "$old" != "$new" ]]; then
-              #   echo "Node dependency change detected in $file"
-              #   deps_changed=true
-              #   changed_files+=("$file")
-              # else
-              #   echo "No dependency/devDependency change in $file"
-              # fi
-
             ############################################
             # .csproj / .props
             ############################################
             elif [[ "$file" == *.csproj || "$file" == *.props ]]; then
-
               old=$(echo "$old_raw" | extract_itemgroups)
               new=$(echo "$new_raw" | extract_itemgroups)
-
-              # if [[ "$old" != "$new" ]]; then
-              #   echo "ItemGroup change detected in $file"
-              #   deps_changed=true
-              #   changed_files+=("$file")
-              # else
-              #   echo "No ItemGroup change in $file"
-              # fi
             fi
+
             ############################################
             # Show diff
             ############################################
@@ -200,10 +179,6 @@ jobs:
           done
 
           echo "deps_changed=$deps_changed" >> "$GITHUB_OUTPUT"
-
-          json=$(printf '%s\n' "${changed_files[@]}" | jq -R . | jq -s -c .)
-          # echo "changed_files=$json" >> "$GITHUB_OUTPUT"
-          # echo "last_sha=$LAST_SHA" >> "$GITHUB_OUTPUT"
 
       # - uses: actions/checkout@v4
       #   with:
