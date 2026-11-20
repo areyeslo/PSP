@@ -120,4 +120,16 @@ public partial class PimsNotificationHist
     [Column("DB_LAST_UPDATE_USERID")]
     [StringLength(30)]
     public string DbLastUpdateUserid { get; set; }
+
+    [Column("LEASE_PERIOD_ID")]
+    public long? LeasePeriodId { get; set; }
+
+    [Column("DISPOSITION_AGREEMENT_ID")]
+    public long? DispositionAgreementId { get; set; }
+
+    [Column("DISPOSITION_OFFER_ID")]
+    public long? DispositionOfferId { get; set; }
+
+    [Column("DISPOSITION_SALE_ID")]
+    public long? DispositionSaleId { get; set; }
 }

@@ -2,7 +2,7 @@ import { FormikProps } from 'formik';
 import { createMemoryHistory } from 'history';
 import { createRef } from 'react';
 
-import { createAxiosError, renderAsync, RenderOptions, screen } from '@/utils/test-utils';
+import { act, createAxiosError, renderAsync, RenderOptions, screen } from '@/utils/test-utils';
 import PropertySelectorPidSearchContainer, {
   PropertySelectorPidSearchContainerProps,
 } from './PropertySelectorPidSearchContainer';
@@ -34,7 +34,7 @@ const setSelectProperty = vi.fn();
 vi.mock('@/hooks/repositories/usePimsPropertyRepository', () => ({
   usePimsPropertyRepository: () => {
     return {
-      getPropertyByPidWrapper: mockGetByPidWrapper,
+      getPropertyByPidLookupWrapper: mockGetByPidWrapper,
     };
   },
 }));
@@ -76,12 +76,18 @@ describe('PropertySearchPidSelector component', () => {
   });
 
   it('calls setSelectedProperty when onSearch', async () => {
+    const property = { id: 442, isOwned: false, isRetired: false };
+    mockGetByPidWrapper.execute.mockResolvedValue({ foundInPims: true, property });
+
     await setup();
 
-    viewProps?.onSearch({ pid: '111-111-111' });
-    mockGetByPidWrapper.execute.mockResolvedValue({ id: 1 });
+    await act(async () => {
+      await viewProps?.onSearch({ pid: '111-111-111' });
+    });
 
     expect(mockGetByPidWrapper.execute).toHaveBeenCalledWith('111-111-111');
+    expect(setSelectProperty).toHaveBeenCalledWith(property);
+    expect(screen.queryByText('No property was found in Core Inventory or PMBC.')).toBeNull();
   });
 
   it('displays an error modal when the property is not owned', async () => {

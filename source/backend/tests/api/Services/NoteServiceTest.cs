@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using MapsterMapper;
@@ -76,13 +77,24 @@ namespace Pims.Api.Test.Services
             // Arrange
             var service = this.CreateNoteServiceWithPermissions(Permissions.NoteAdd);
             var dispositionFileNote = EntityHelper.CreateDispositionFileNote();
+
             var repository = this._helper.GetService<Mock<INoteRelationshipRepository<PimsDispositionFileNote>>>();
             repository.Setup(x => x.AddNoteRelationship(It.IsAny<PimsDispositionFileNote>())).Returns(dispositionFileNote);
+
+            var dispositionFile = EntityHelper.CreateDispositionFile();
+            dispositionFile.RegionCode = 1;
+
+            var dispositionFileRepository = this._helper.GetService<Mock<IDispositionFileRepository>>();
+            dispositionFileRepository.Setup(x => x.GetById(dispositionFileNote.ParentId)).Returns(dispositionFile);
+
+            var userRepository = this._helper.GetService<Mock<IUserRepository>>();
+            userRepository.Setup(x => x.GetUserInfoByKeycloakUserId(It.IsAny<Guid>())).Returns(EntityHelper.CreateUser("Test", regionCode: 1));
 
             // Act
             var result = service.AddDispositionFileNote(dispositionFileNote);
 
             // Assert
+            result.Should().NotBeNull();
             repository.Verify(x => x.AddNoteRelationship(It.IsAny<PimsDispositionFileNote>()), Times.Once);
         }
 
@@ -90,16 +102,50 @@ namespace Pims.Api.Test.Services
         public void Add_LeaseFileNote_Success()
         {
             // Arrange
-            var service = this.CreateNoteServiceWithPermissions(Permissions.NoteAdd);
+            var service = this.CreateNoteServiceWithPermissions(
+                Permissions.NoteAdd,
+                Permissions.LeaseEdit);
+
             var leaseFileNote = EntityHelper.CreateLeaseNote();
-            var repository = this._helper.GetService<Mock<INoteRelationshipRepository<PimsLeaseNote>>>();
-            repository.Setup(x => x.AddNoteRelationship(It.IsAny<PimsLeaseNote>())).Returns(leaseFileNote);
+
+            var lease = EntityHelper.CreateLease((int)leaseFileNote.ParentId);
+            lease.RegionCode = 1;
+
+            var user = EntityHelper.CreateUser("Test");
+            user.PimsRegionUsers.Add(new PimsRegionUser()
+            {
+                RegionCode = 1,
+            });
+
+            var leaseRepository = this._helper.GetService<Mock<ILeaseRepository>>();
+            leaseRepository
+                .Setup(x => x.GetNoTracking(leaseFileNote.ParentId))
+                .Returns(lease);
+
+            var userRepository = this._helper.GetService<Mock<IUserRepository>>();
+            userRepository
+                .Setup(x => x.GetUserInfoByKeycloakUserId(It.IsAny<Guid>()))
+                .Returns(user);
+
+            var lookupRepository = this._helper.GetService<Mock<ILookupRepository>>();
+            lookupRepository
+                .Setup(x => x.GetAllRegions())
+                .Returns(new List<PimsRegion>());
+
+            var repository =
+                this._helper.GetService<Mock<INoteRelationshipRepository<PimsLeaseNote>>>();
+
+            repository
+                .Setup(x => x.AddNoteRelationship(It.IsAny<PimsLeaseNote>()))
+                .Returns(leaseFileNote);
 
             // Act
             var result = service.AddLeaseNote(leaseFileNote);
 
             // Assert
-            repository.Verify(x => x.AddNoteRelationship(It.IsAny<PimsLeaseNote>()), Times.Once);
+            repository.Verify(
+                x => x.AddNoteRelationship(It.IsAny<PimsLeaseNote>()),
+                Times.Once);
         }
 
         [Fact]

@@ -1,16 +1,22 @@
 import { FC, useMemo } from 'react';
 import { FaCircle, FaExternalLinkAlt, FaMinus, FaRegCheckCircle } from 'react-icons/fa';
 import styled from 'styled-components';
+import { v4 as uuidv4 } from 'uuid';
 
 import MoreOptionsMenu, { MenuOption } from '@/components/common/MoreOptionsMenu';
+import { TooltipWrapper } from '@/components/common/TooltipWrapper';
 import { ApiGen_Concepts_NotificationInboxItem } from '@/models/api/generated/ApiGen_Concepts_NotificationInboxItem';
 import { prettyFormatDate } from '@/utils';
+
+import { notificationGridLayout } from './notificationTableLayout';
 
 export interface INotificationRowProps {
   notification: ApiGen_Concepts_NotificationInboxItem;
   onSelect: (notification: ApiGen_Concepts_NotificationInboxItem) => void;
   onToggleRead: (notification: ApiGen_Concepts_NotificationInboxItem) => void;
   onDelete: (notification: ApiGen_Concepts_NotificationInboxItem) => void;
+  isMenuOpen?: boolean;
+  onMenuToggle?: (isOpen: boolean) => void;
 }
 
 export const NotificationRow: FC<INotificationRowProps> = ({
@@ -18,8 +24,10 @@ export const NotificationRow: FC<INotificationRowProps> = ({
   onSelect,
   onToggleRead,
   onDelete,
+  isMenuOpen,
+  onMenuToggle,
 }) => {
-  const fileLabel = notification?.subject ?? '';
+  const subjectLabel = notification?.subject ?? '';
   const typeLabel = notification?.notificationType?.description ?? '';
   const trackedDate = notification?.trackedDate ?? null;
   const unread = !notification.isRead;
@@ -66,28 +74,34 @@ export const NotificationRow: FC<INotificationRowProps> = ({
           onSelect(notification);
         }
       }}
-      aria-label={`${typeLabel} notification for ${fileLabel}`}
+      aria-label={`${typeLabel} notification for ${subjectLabel}`}
     >
       <DotCell>{unread && <UnreadDot aria-label="Unread notification" />}</DotCell>
-      <FileCell>{fileLabel}</FileCell>
-      <TypeCell>{typeLabel}</TypeCell>
+      <TooltipWrapper
+        tooltipId={`notification-subject-tooltip-${notification?.id ?? uuidv4()}`}
+        tooltip={subjectLabel}
+      >
+        <FileCell>{subjectLabel}</FileCell>
+      </TooltipWrapper>
+      <TooltipWrapper
+        tooltipId={`notification-type-tooltip-${notification?.id ?? uuidv4()}`}
+        tooltip={typeLabel}
+      >
+        <TypeCell>{typeLabel}</TypeCell>
+      </TooltipWrapper>
       <DateCell>{trackedDate !== null ? prettyFormatDate(trackedDate) : ''}</DateCell>
       <ActionsCell
         onClick={event => event.stopPropagation()}
         onKeyDown={event => event.stopPropagation()}
       >
-        <MoreOptionsMenu options={menuOptions} />
+        <MoreOptionsMenu options={menuOptions} show={isMenuOpen} onToggle={onMenuToggle} />
       </ActionsCell>
     </Row>
   );
 };
 
 const Row = styled.div`
-  display: grid;
-  grid-template-columns: 2.4rem 1fr 1fr 12rem 3rem;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 0.8rem;
+  ${notificationGridLayout}
   min-height: 4rem;
   cursor: pointer;
 
@@ -129,7 +143,7 @@ const TypeCell = styled.div`
 `;
 
 const DateCell = styled.div`
-  text-align: right;
+  text-align: left;
   color: ${props => props.theme.css.pimsGrey80 ?? '#555'};
   font-variant-numeric: tabular-nums;
   margin-right: 1rem;
@@ -137,7 +151,8 @@ const DateCell = styled.div`
 
 const ActionsCell = styled.div`
   display: flex;
-  justify-content: flex-center;
+  justify-content: center;
+  justify-self: center;
   align-items: center;
   padding: 0.5rem;
   width: 3rem;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -27,7 +28,7 @@ namespace Pims.Api.Services
         private readonly IEmailRepository _chesRepository;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public NotificationUserService(ClaimsPrincipal user, ILogger<DocumentQueueService> logger, INotificationUserOutputRepository userOutputRepository, IEmailRepository chesRepository, IAcquisitionFileRepository acqFileRepository, IDispositionFileRepository dispFileRepository, IWebHostEnvironment webHostEnvironment)
+        public NotificationUserService(ClaimsPrincipal user, ILogger<NotificationUserService> logger, INotificationUserOutputRepository userOutputRepository, IEmailRepository chesRepository, IWebHostEnvironment webHostEnvironment)
             : base(null, logger)
         {
             _user = user;
@@ -97,6 +98,135 @@ namespace Pims.Api.Services
             return;
         }
 
+        private static string GetNotificationSource(PimsNotification notification)
+        {
+            return notification.NotificationTypeCode switch
+            {
+                nameof(NotificationTypes.TAKE_SRW)
+                or nameof(NotificationTypes.TAKE_LAT)
+                or nameof(NotificationTypes.TAKE_LTC)
+                or nameof(NotificationTypes.TAKE_LPYBLE)
+                or nameof(NotificationTypes.EXPROPH_APPEFFDT)
+                or nameof(NotificationTypes.EXPROPH_VESTDT)
+                or nameof(NotificationTypes.EXPROPH_ADVPYSVDT)
+                or nameof(NotificationTypes.AGMT_SIGND)
+                or nameof(NotificationTypes.AGMT_AGMTDT)
+                or nameof(NotificationTypes.AGMT_COMPTDT)
+                or nameof(NotificationTypes.AGMT_TERMINDT)
+                or nameof(NotificationTypes.AGMT_POSNDT)
+                or nameof(NotificationTypes.ACQ_DLVDT)
+                or nameof(NotificationTypes.NOC) when notification.AcquisitionFile is not null
+                    => $"Acquisition File #: {notification.AcquisitionFile.FileNumberFormatted}",
+
+                nameof(NotificationTypes.NOC) when notification.ManagementFile is not null
+                    => $"Management File #: M-{notification.ManagementFile.ManagementFileId}",
+
+                nameof(NotificationTypes.L_RENEWAL)
+                    => GetLeaseRenewalSource(notification),
+
+                nameof(NotificationTypes.L_ORIG_AGMT_EXPDT)
+                    => GetOriginalAgreementExpirySource(notification),
+
+                nameof(NotificationTypes.L_INSURANCE)
+                    => GetInsuranceSource(notification),
+
+                nameof(NotificationTypes.L_CONSULTFN)
+                    => GetConsultationSource(notification),
+
+                nameof(NotificationTypes.DSP_AGMT_AGMTDT)
+                or nameof(NotificationTypes.DSP_AGMT_COMPTDT)
+                or nameof(NotificationTypes.DSP_AGMT_POSNDT)
+                or nameof(NotificationTypes.DSP_AGMT_TERMDT) when notification.DispositionFile is not null
+                    => $"Disposition File #: D-{notification.DispositionFile.FileNumber}",
+
+                _ => string.Empty,
+            };
+        }
+
+        private static bool IsLeaseReceivable(PimsLease lease)
+        {
+            return lease.LeasePayRvblTypeCode == LeasePaymentReceivableTypes.RCVBL.ToString();
+        }
+
+        private static string GetOriginalAgreementExpirySource(PimsNotification notification)
+        {
+            var lease = notification.Lease;
+
+            var text = $"Lease File #: {lease.LFileNo} " +
+                $"and Original Agreement Expiry Date: {lease.OrigExpiryDate:yyyy-MM-dd}";
+
+            if (lease.PimsLeaseStakeholders.Count > 0 && IsLeaseReceivable(lease))
+            {
+                var tenants = GetTenants(lease);
+                text += $" with {tenants} as Tenants";
+            }
+
+            return text;
+        }
+
+        private static string GetLeaseRenewalSource(PimsNotification notification)
+        {
+            var lease = notification.Lease;
+
+            var text = $"Lease File #: {lease.LFileNo}";
+
+            if (lease.PimsLeaseStakeholders.Count > 0 && IsLeaseReceivable(lease))
+            {
+                var tenants = GetTenants(lease);
+                text += $" with {tenants} as Tenants";
+            }
+
+            return text;
+        }
+
+        private static string GetInsuranceSource(PimsNotification notification)
+        {
+            var lease = notification.Lease;
+
+            if (lease.PimsLeaseStakeholders.Count > 0 && IsLeaseReceivable(lease))
+            {
+                var tenants = GetTenants(lease);
+
+                return $"Lease File #: {lease.LFileNo} " +
+                    $"with {tenants} as Tenants. " +
+                    $"Insurance for: {notification.Insurance.InsuranceTypeCodeNavigation.Description}";
+            }
+
+            return $"Lease File #: {lease.LFileNo} " +
+                $"and Insurance for: {notification.Insurance.InsuranceTypeCodeNavigation.Description}";
+        }
+
+        private static string GetConsultationSource(PimsNotification notification)
+        {
+            var lease = notification.Lease;
+
+            if (lease.PimsLeaseStakeholders.Count > 0 && IsLeaseReceivable(lease))
+            {
+                var tenants = GetTenants(lease);
+
+                return $"Lease File #: {lease.LFileNo} " +
+                    $"with {tenants} as Tenants and " +
+                    $"First Nation Consultation with status: " +
+                    $"{notification.LeaseConsultation.ConsultationOutcomeTypeCodeNavigation.Description}";
+            }
+
+            return $"Lease File #: {lease.LFileNo} " +
+                $"and First Nation Consultation with status: " +
+                $"{notification.LeaseConsultation.ConsultationOutcomeTypeCodeNavigation.Description}";
+        }
+
+        private static string GetTenants(PimsLease lease)
+        {
+            return string.Join(
+                ", ",
+                lease.PimsLeaseStakeholders
+                    .Select(stakeholder =>
+                        stakeholder.PersonId.HasValue
+                            ? stakeholder.Person.GetFullName()
+                            : stakeholder.Organization?.Name)
+                    .Where(name => !string.IsNullOrWhiteSpace(name)));
+        }
+
         private async Task<EmailRequest> GenerateEmailRequest(PimsNotificationUserOutput userNotification)
         {
             var emailToContactAddress = userNotification.NotificationUser.User?.Person?.GetEmail();
@@ -129,37 +259,6 @@ namespace Pims.Api.Services
             newEmail.To.Add(emailToContactAddress);
 
             return newEmail;
-
-            static string GetNotificationSource(PimsNotification notification)
-            {
-                string source;
-                if(notification.AcquisitionFileId.HasValue)
-                {
-                    source = $"Acquisition File #: {notification.AcquisitionFile.FileNumberFormatted}";
-                }
-                else if(notification.DispositionFileId.HasValue)
-                {
-                    source = $"Disposition File #: D-{notification.DispositionFile.FileNumber}";
-                }
-                else if(notification.ResearchFileId.HasValue)
-                {
-                    source = $"Research File #: R-{notification.ResearchFile.RfileNumber}";
-                }
-                else if(notification.ManagementFileId.HasValue)
-                {
-                    source = $"Management File #: M-{notification.ManagementFile.ManagementFileId}";
-                }
-                else if(notification.LeaseId.HasValue)
-                {
-                    source = $"Lease File #: {notification.Lease.LFileNo}";
-                }
-                else
-                {
-                    source = string.Empty;
-                }
-
-                return source;
-            }
         }
     }
 }

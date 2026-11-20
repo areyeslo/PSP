@@ -67,10 +67,12 @@ vi.mocked(useApiLeases).mockReturnValue({
   putLeaseChecklist: vi.fn(),
   getLeaseChecklist: vi.fn(),
   getLeaseRenewals: vi.fn(),
+  getLeaseProject: vi.fn(),
   getLeaseStakeholderTypes: vi.fn(),
   putLeaseProperties: vi.fn(),
   getAllLeaseFileTeamMembers: vi.fn().mockResolvedValue({ data: [] }),
   getLeaseAtTime: vi.fn(),
+  getLeaseAssociations: vi.fn(),
 });
 
 const leaseStatusTypes = getMockLookUpsByType(API.LEASE_STATUS_TYPES);

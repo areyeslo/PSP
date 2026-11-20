@@ -6,8 +6,10 @@ import { Api_LastUpdatedBy } from '@/models/api/File';
 import { ApiGen_Concepts_FileChecklistItem } from '@/models/api/generated/ApiGen_Concepts_FileChecklistItem';
 import { ApiGen_Concepts_FileWithChecklist } from '@/models/api/generated/ApiGen_Concepts_FileWithChecklist';
 import { ApiGen_Concepts_Lease } from '@/models/api/generated/ApiGen_Concepts_Lease';
+import { ApiGen_Concepts_LeaseAssociation } from '@/models/api/generated/ApiGen_Concepts_LeaseAssociation';
 import { ApiGen_Concepts_LeaseRenewal } from '@/models/api/generated/ApiGen_Concepts_LeaseRenewal';
 import { ApiGen_Concepts_LeaseStakeholderType } from '@/models/api/generated/ApiGen_Concepts_LeaseStakeholderType';
+import { ApiGen_Concepts_Project } from '@/models/api/generated/ApiGen_Concepts_Project';
 import { UserOverrideCode } from '@/models/api/UserOverrideCode';
 import {
   useAxiosErrorHandler,
@@ -29,9 +31,11 @@ export const useLeaseRepository = () => {
     putLeaseChecklist,
     getLeaseChecklist,
     getLeaseRenewals,
+    getLeaseProject,
     getLeaseStakeholderTypes,
     getAllLeaseFileTeamMembers,
     getLeaseAtTime,
+    getLeaseAssociations,
   } = useApiLeases();
 
   const getLastUpdatedBy = useApiRequestWrapper<
@@ -109,6 +113,18 @@ export const useLeaseRepository = () => {
     throwError: true,
   });
 
+  const getLeaseProjectApi = useApiRequestWrapper<
+    (leaseId: number) => Promise<AxiosResponse<ApiGen_Concepts_Project, any>>
+  >({
+    requestFunction: useCallback(
+      async (leaseId: number) => await getLeaseProject(leaseId),
+      [getLeaseProject],
+    ),
+    requestName: 'getLeaseProjectApi',
+    onSuccess: useAxiosSuccessHandler(),
+    onError: useAxiosErrorHandler('Failed to retrieve lease project.'),
+  });
+
   const getLeaseStakeholderTypesApi = useApiRequestWrapper<
     () => Promise<AxiosResponse<ApiGen_Concepts_LeaseStakeholderType[], any>>
   >({
@@ -145,28 +161,44 @@ export const useLeaseRepository = () => {
     onError: useAxiosErrorHandler('Failed to retrieve Lease historical information'),
   });
 
+  const getLeaseAssociationsApi = useApiRequestWrapper<
+    (leaseId: number) => Promise<AxiosResponse<ApiGen_Concepts_LeaseAssociation, any>>
+  >({
+    requestFunction: useCallback(
+      async (leaseId: number) => await getLeaseAssociations(leaseId),
+      [getLeaseAssociations],
+    ),
+    requestName: 'getLeaseAssociations',
+    onSuccess: useAxiosSuccessHandler(),
+    onError: useAxiosErrorHandler('Failed to retrieve Lease Associations'),
+  });
+
   return useMemo(
     () => ({
       getLastUpdatedBy: getLastUpdatedBy,
       updateLease: updateApiLease,
       getLease: getLease,
       getLeaseRenewals: getLeaseRenewalsApi,
+      getLeaseProject: getLeaseProjectApi,
       getLeaseChecklist: getLeaseChecklistApi,
       putLeaseChecklist: updateLeaseChecklistApi,
       getLeaseStakeholderTypes: getLeaseStakeholderTypesApi,
       getAllLeaseTeamMembers: getAllLeaseTeamApi,
       getLeaseAtTime: getLeaseAtTimeApi,
+      getLeaseAssociations: getLeaseAssociationsApi,
     }),
     [
       getLastUpdatedBy,
       updateApiLease,
       getLease,
       getLeaseRenewalsApi,
+      getLeaseProjectApi,
       getLeaseChecklistApi,
       updateLeaseChecklistApi,
       getLeaseStakeholderTypesApi,
       getAllLeaseTeamApi,
       getLeaseAtTimeApi,
+      getLeaseAssociationsApi,
     ],
   );
 };

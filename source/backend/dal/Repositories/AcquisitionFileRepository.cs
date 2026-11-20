@@ -22,6 +22,7 @@ namespace Pims.Dal.Repositories
     {
         private readonly ISequenceRepository _sequenceRepository;
         private readonly IMapper _mapper;
+        private readonly INotificationRepository _notificationRepository;
         #region Constructors
 
         /// <summary>
@@ -30,11 +31,12 @@ namespace Pims.Dal.Repositories
         /// <param name="dbContext"></param>
         /// <param name="user"></param>
         /// <param name="logger"></param>
-        public AcquisitionFileRepository(PimsContext dbContext, ClaimsPrincipal user, ILogger<AcquisitionFileRepository> logger, ISequenceRepository sequenceRepository, IMapper mapper)
+        public AcquisitionFileRepository(PimsContext dbContext, ClaimsPrincipal user, ILogger<AcquisitionFileRepository> logger, ISequenceRepository sequenceRepository, IMapper mapper, INotificationRepository notificationRepository)
             : base(dbContext, user, logger)
         {
             _sequenceRepository = sequenceRepository;
             _mapper = mapper;
+            _notificationRepository = notificationRepository;
         }
         #endregion
 
@@ -760,6 +762,39 @@ namespace Pims.Dal.Repositories
             Context.UpdateGrandchild<PimsAcquisitionFile, long, PimsAcquisitionOwner>(o => o.PimsAcquisitionOwners, oa => oa.Address, acquisitionFile.Internal_Id, acquisitionFile.PimsAcquisitionOwners.ToArray());
             Context.UpdateChild<PimsAcquisitionFile, long, PimsAcqFileAcqProgress, long>(p => p.PimsAcqFileAcqProgresses, acquisitionFile.AcquisitionFileId, acquisitionFile.PimsAcqFileAcqProgresses.ToArray());
             Context.UpdateChild<PimsAcquisitionFile, long, PimsAcqFileAcqFlTakeTyp, long>(p => p.PimsAcqFileAcqFlTakeTyps, acquisitionFile.AcquisitionFileId, acquisitionFile.PimsAcqFileAcqFlTakeTyps.ToArray());
+
+            // Remove reminders associated with a NoC when its received date is cleared,
+            // even if the claim remains on the file with comments.
+            var noticeOfClaimIdsWithReceivedDates = acquisitionFile.PimsNoticeOfClaims
+                .Where(x => x.ReceivedDt.HasValue)
+                .Select(x => x.NoticeOfClaimId)
+                .ToHashSet();
+
+            var deletedNotificationIds = Context.PimsNoticeOfClaims
+                .Where(n => n.AcquisitionFileId == acquisitionFile.Internal_Id
+                    && !noticeOfClaimIdsWithReceivedDates.Contains(n.NoticeOfClaimId))
+                .SelectMany(n => n.PimsNotifications)
+                .Select(n => n.NotificationId)
+                .ToList();
+
+            //Remove reminders from Schedule - Delivery Date in case the delivery date is cleared.
+            var scheduledDeliveryDate = acquisitionFile.DeliveryDate;
+            if (!scheduledDeliveryDate.HasValue)
+            {
+                var notificationIds = Context.PimsNotifications
+                    .Where(n => n.AcquisitionFileId == acquisitionFile.Internal_Id
+                        && n.NotificationTypeCode == nameof(NotificationTypes.ACQ_DLVDT))
+                    .Select(n => n.NotificationId)
+                    .ToList();
+
+                deletedNotificationIds.AddRange(notificationIds);
+            }
+
+            foreach (var notificationId in deletedNotificationIds)
+            {
+                _notificationRepository.Delete(notificationId);
+            }
+
             Context.UpdateChild<PimsAcquisitionFile, long, PimsNoticeOfClaim, long>(p => p.PimsNoticeOfClaims, acquisitionFile.Internal_Id, acquisitionFile.PimsNoticeOfClaims.ToArray());
 
             return acquisitionFile;

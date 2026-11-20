@@ -14,10 +14,13 @@ import TooltipIcon from '@/components/common/TooltipIcon';
 import Claims from '@/constants/claims';
 //Check this later if we need to move to shared folder.
 import { cannotEditMessage } from '@/features/mapSideBar/acquisition/common/constants';
+import ReminderContainer from '@/features/notifications/ReminderContainer';
+import ReminderView from '@/features/notifications/ReminderView';
 import useKeycloakWrapper from '@/hooks/useKeycloakWrapper';
 import { getDeleteModalProps, useModalContext } from '@/hooks/useModalContext';
 import { ApiGen_CodeTypes_AgreementStatusTypes } from '@/models/api/generated/ApiGen_CodeTypes_AgreementStatusTypes';
 import { ApiGen_CodeTypes_AgreementTypes } from '@/models/api/generated/ApiGen_CodeTypes_AgreementTypes';
+import { ApiGen_CodeTypes_NotificationTypes } from '@/models/api/generated/ApiGen_CodeTypes_NotificationTypes';
 import { ApiGen_Concepts_Agreement } from '@/models/api/generated/ApiGen_Concepts_Agreement';
 import { exists, formatMoney, prettyFormatDate } from '@/utils';
 
@@ -26,6 +29,8 @@ export interface IAgreementViewProps {
   agreements: ApiGen_Concepts_Agreement[];
   isFileFinalStatus?: boolean;
   isSection3?: boolean;
+  isAcquisition?: boolean;
+  canEdit?: boolean;
   onGenerate: (agreement: ApiGen_Concepts_Agreement) => void;
   onDelete: (agreementId: number) => void;
 }
@@ -35,13 +40,30 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
   agreements,
   isFileFinalStatus,
   isSection3,
+  canEdit,
   onGenerate,
   onDelete,
+  isAcquisition,
 }) => {
   const keycloak = useKeycloakWrapper();
   const history = useHistory();
   const match = useRouteMatch();
   const { setModalContent, setDisplayModal } = useModalContext();
+  const editClaim = isAcquisition ? Claims.ACQUISITION_EDIT : Claims.DISPOSITION_EDIT;
+
+  const notificationTypes = isAcquisition
+    ? {
+        agreement: ApiGen_CodeTypes_NotificationTypes.AGMT_AGMTDT,
+        completion: ApiGen_CodeTypes_NotificationTypes.AGMT_COMPTDT,
+        termination: ApiGen_CodeTypes_NotificationTypes.AGMT_TERMINDT,
+        possession: ApiGen_CodeTypes_NotificationTypes.AGMT_POSNDT,
+      }
+    : {
+        agreement: ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_AGMTDT,
+        completion: ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_COMPTDT,
+        termination: ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_TERMDT,
+        possession: ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_POSNDT,
+      };
 
   return (
     <StyledSummarySection>
@@ -50,14 +72,14 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
       <Section
         header={
           <SectionListHeader
-            claims={[Claims.ACQUISITION_EDIT]}
+            claims={[editClaim]}
             title="Agreements"
             addButtonText="Add Agreement"
             addButtonIcon={<FaPlus size={'2rem'} />}
             onButtonAction={() => {
               history.push(`${match.url}/add`);
             }}
-            isAddEnabled={!isFileFinalStatus}
+            isAddEnabled={!isFileFinalStatus && canEdit !== false}
             cannotAddComponent={
               <TooltipIcon toolTipId={`agreement-cannot-add-tooltip`} toolTip={cannotEditMessage} />
             }
@@ -88,7 +110,7 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
                               {`Generate ${getAgreementFormName(agreement.agreementType.id)}`}
                             </StyledAddButton>
 
-                            {keycloak.hasClaim(Claims.ACQUISITION_EDIT) && (
+                            {keycloak.hasClaim(editClaim) && canEdit !== false && (
                               <>
                                 <EditButton
                                   title="Edit Agreement"
@@ -170,7 +192,28 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
               )}
 
               <SectionField labelWidth={{ xs: 6 }} label="Agreement date">
-                {prettyFormatDate(agreement.agreementDate)}
+                <StyledReminderContent>
+                  <StyledDate>{prettyFormatDate(agreement.agreementDate)}</StyledDate>
+                  {agreement.agreementDate && (
+                    <ReminderContainer
+                      keyDate={agreement.agreementDate}
+                      keyDateLabel="Agreement date"
+                      notificationType={notificationTypes.agreement}
+                      notificationSource={
+                        isAcquisition
+                          ? {
+                              acquisitionFileId: agreement.fileId,
+                              agreementId: agreement.agreementId,
+                            }
+                          : {
+                              dispositionFileId: agreement.fileId,
+                              dispositionAgreementId: agreement.agreementId,
+                            }
+                      }
+                      View={ReminderView}
+                    />
+                  )}
+                </StyledReminderContent>
               </SectionField>
               {agreement.agreementType?.id === ApiGen_CodeTypes_AgreementTypes.H0074 && (
                 <SectionField labelWidth={{ xs: 6 }} label="Commencement date">
@@ -178,13 +221,76 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
                 </SectionField>
               )}
               <SectionField labelWidth={{ xs: 6 }} label="Completion date">
-                {prettyFormatDate(agreement.completionDate)}
+                <StyledReminderContent>
+                  <StyledDate>{prettyFormatDate(agreement.completionDate)}</StyledDate>
+                  {agreement.completionDate && (
+                    <ReminderContainer
+                      keyDate={agreement.completionDate}
+                      keyDateLabel="Completion date"
+                      notificationType={notificationTypes.completion}
+                      notificationSource={
+                        isAcquisition
+                          ? {
+                              acquisitionFileId: agreement.fileId,
+                              agreementId: agreement.agreementId,
+                            }
+                          : {
+                              dispositionFileId: agreement.fileId,
+                              dispositionAgreementId: agreement.agreementId,
+                            }
+                      }
+                      View={ReminderView}
+                    />
+                  )}
+                </StyledReminderContent>
               </SectionField>
               <SectionField labelWidth={{ xs: 6 }} label="Termination date">
-                {prettyFormatDate(agreement.terminationDate)}
+                <StyledReminderContent>
+                  <StyledDate>{prettyFormatDate(agreement.terminationDate)}</StyledDate>
+                  {agreement.terminationDate && (
+                    <ReminderContainer
+                      keyDate={agreement.terminationDate}
+                      keyDateLabel="Termination date"
+                      notificationType={notificationTypes.termination}
+                      notificationSource={
+                        isAcquisition
+                          ? {
+                              acquisitionFileId: agreement.fileId,
+                              agreementId: agreement.agreementId,
+                            }
+                          : {
+                              dispositionFileId: agreement.fileId,
+                              dispositionAgreementId: agreement.agreementId,
+                            }
+                      }
+                      View={ReminderView}
+                    />
+                  )}
+                </StyledReminderContent>
               </SectionField>
               <SectionField labelWidth={{ xs: 6 }} label="Possession date">
-                {prettyFormatDate(agreement.possessionDate)}
+                <StyledReminderContent>
+                  <StyledDate>{prettyFormatDate(agreement.possessionDate)}</StyledDate>
+                  {agreement.possessionDate && (
+                    <ReminderContainer
+                      keyDate={agreement.possessionDate}
+                      keyDateLabel="Possession date"
+                      notificationType={notificationTypes.possession}
+                      notificationSource={
+                        isAcquisition
+                          ? {
+                              acquisitionFileId: agreement.fileId,
+                              agreementId: agreement.agreementId,
+                            }
+                          : {
+                              dispositionFileId: agreement.fileId,
+                              dispositionAgreementId: agreement.agreementId,
+                            }
+                      }
+                      View={ReminderView}
+                    />
+                  )}
+                </StyledReminderContent>
               </SectionField>
 
               <StyledAgreementSubheader>Financial</StyledAgreementSubheader>
@@ -210,9 +316,7 @@ export const AgreementView: React.FunctionComponent<IAgreementViewProps> = ({
             </Section>
           </StyledAgreementBorder>
         ))}
-        {agreements.length === 0 && (
-          <p>There are no agreements indicated in this acquisition file.</p>
-        )}
+        {agreements.length === 0 && <p>There are no agreements indicated in this file.</p>}
       </Section>
     </StyledSummarySection>
   );
@@ -274,4 +378,16 @@ export const StyledAgreementSubheader = styled.div`
   border-bottom: 0.2rem ${props => props.theme.css.headerBorderColor} solid;
   margin-top: 2rem;
   margin-bottom: 2rem;
+`;
+
+const StyledReminderContent = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: top;
+  gap: 1.2rem;
+`;
+
+const StyledDate = styled.span`
+  width: 100px;
+  flex-shrink: 0;
 `;

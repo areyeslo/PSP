@@ -4,12 +4,20 @@ name: Codecov Comment on PR
 # access to secrets
 on:
   workflow_run:
-    workflows: ["API (.NET 8)", "APP (React)"]
+    workflows: ["API (.NET 10)", "APP (React)"]
     types:
       - completed
 
+# Default to source read access; grant additional permissions only in jobs that need them.
+permissions:
+  contents: read
+
 jobs:
   upload:
+    permissions:
+      contents: read        # Required for actions/checkout to read repository source
+      actions: read         # Required for actions/github-script to list and download workflow artifacts
+      pull-requests: write  # Required for actions/github-script to post coverage comments on PRs
     runs-on: ubuntu-22.04
     if: >
       github.event.workflow_run.event == 'pull_request' &&
@@ -59,7 +67,7 @@ jobs:
             return issue_number;
           result-encoding: string
       - name: Codecov(API)
-        if: ${{ github.event.workflow_run.name == 'API (.NET 8)' }}
+        if: ${{ github.event.workflow_run.name == 'API (.NET 10)' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV }}
@@ -67,7 +75,7 @@ jobs:
           # User defined upload name. Visible in Codecov UI
           name: PIMS
           # Path to coverage file to upload
-          file: ./coverage.opencover.xml
+          files: ./coverage.opencover.xml
           # Flag upload to group coverage metrics (e.g. unittests | integration | ui,chrome)
           flags: unittests
           env_vars: C#
@@ -83,7 +91,7 @@ jobs:
           # User defined upload name. Visible in Codecov UI
           name: PIMS
           # Path to coverage file to upload
-          file: ./coverage-final.json
+          files: ./coverage-final.json
           # Flag upload to group coverage metrics (e.g. unittests | integration | ui,chrome)
           flags: unittests
           # Environment variables to tag the upload with (e.g. PYTHON | OS,PYTHON)

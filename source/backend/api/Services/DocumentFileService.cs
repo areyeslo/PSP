@@ -37,6 +37,11 @@ namespace Pims.Api.Services
         private readonly IDocumentRelationshipRepository<PimsDispositionFileDocument> _dispositionFileDocumentRepository;
         private readonly IDocumentRelationshipRepository<PimsManagementFileDocument> _managementFileDocumentRepository;
         private readonly IDocumentRelationshipRepository<PimsPropertyDocument> _propertyDocumentRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly ILookupRepository _lookupRepository;
+        private readonly IProjectRepository _projectRepository;
+        private readonly ILeaseRepository _leaseRepository;
+        private readonly IDispositionFileRepository _dispositionFileRepository;
 
         public DocumentFileService(
             ClaimsPrincipal user,
@@ -51,7 +56,12 @@ namespace Pims.Api.Services
             IDocumentRelationshipRepository<PimsDispositionFileDocument> dispositionFileDocumentRepository,
             IDocumentRelationshipRepository<PimsManagementFileDocument> managementFileDocumentRepository,
             IDocumentRelationshipRepository<PimsPropertyDocument> propertyDocumentRepository,
-            IDocumentQueueRepository documentQueueRepository)
+            IDocumentQueueRepository documentQueueRepository,
+            IUserRepository userRepository,
+            ILookupRepository lookupRepository,
+            IProjectRepository projectRepository,
+            ILeaseRepository leaseRepository,
+            IDispositionFileRepository dispositionFileRepository)
             : base(user, logger)
         {
             _documentService = documentService;
@@ -65,6 +75,11 @@ namespace Pims.Api.Services
             _managementFileDocumentRepository = managementFileDocumentRepository;
             _propertyDocumentRepository = propertyDocumentRepository;
             _documentQueueRepository = documentQueueRepository;
+            _userRepository = userRepository;
+            _lookupRepository = lookupRepository;
+            _projectRepository = projectRepository;
+            _leaseRepository = leaseRepository;
+            _dispositionFileRepository = dispositionFileRepository;
         }
 
         public IList<T> GetFileDocuments<T>(FileType fileType, long fileId)
@@ -129,6 +144,10 @@ namespace Pims.Api.Services
         {
             Logger.LogInformation("Uploading document for single Lease");
             User.ThrowIfNotAllAuthorized(Permissions.DocumentAdd, Permissions.LeaseEdit);
+
+            var currentLease = _leaseRepository.GetNoTracking(leaseId) ?? throw new BadRequestException("Invalid lease");
+            currentLease.ThrowIfCannotEditLeaseFile(User, _userRepository, _projectRepository, _lookupRepository);
+
             await UploadDocument(leaseId, uploadRequest, _leaseFileDocumentRepository);
         }
 
@@ -150,6 +169,9 @@ namespace Pims.Api.Services
         {
             Logger.LogInformation("Uploading document for single disposition file");
             User.ThrowIfNotAllAuthorized(Permissions.DocumentAdd, Permissions.DispositionEdit);
+
+            var currentDispositionFile = _dispositionFileRepository.GetById(dispositionFileId) ?? throw new BadRequestException("Invalid disposition file");
+            currentDispositionFile.ThrowIfCannotEditDispositionFile(User, _userRepository, _projectRepository, _lookupRepository);
             await UploadDocument(dispositionFileId, uploadRequest, _dispositionFileDocumentRepository);
         }
 
@@ -185,6 +207,9 @@ namespace Pims.Api.Services
         {
             Logger.LogInformation("Deleting PIMS document for single lease");
             User.ThrowIfNotAllAuthorized(Permissions.DocumentDelete, Permissions.LeaseEdit);
+
+            var currentLease = _leaseRepository.GetNoTracking(leaseDocument.FileId) ?? throw new BadRequestException("Invalid lease");
+            currentLease.ThrowIfCannotEditLeaseFile(User, _userRepository, _projectRepository, _lookupRepository);
             return await DeletePropertyDocumentAsync(leaseDocument, _leaseFileDocumentRepository);
         }
 
@@ -206,6 +231,8 @@ namespace Pims.Api.Services
         {
             Logger.LogInformation("Deleting PIMS document for single disposition file");
             User.ThrowIfNotAllAuthorized(Permissions.DocumentDelete, Permissions.DispositionEdit);
+            var currentDispositionFile = _dispositionFileRepository.GetById(dispositionFileDocument.DispositionFileId) ?? throw new BadRequestException("Invalid disposition file");
+            currentDispositionFile.ThrowIfCannotEditDispositionFile(User, _userRepository, _projectRepository, _lookupRepository);
             return await DeletePropertyDocumentAsync(dispositionFileDocument, _dispositionFileDocumentRepository);
         }
 

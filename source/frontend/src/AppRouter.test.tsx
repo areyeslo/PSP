@@ -152,10 +152,12 @@ vi.mocked(useApiLeases).mockReturnValue({
   putLeaseChecklist: vi.fn(),
   getLeaseChecklist: vi.fn(),
   getLeaseRenewals: vi.fn(),
+  getLeaseProject: vi.fn(),
   getLeaseStakeholderTypes: vi.fn(),
   putLeaseProperties: vi.fn(),
   getAllLeaseFileTeamMembers: vi.fn(),
-  getLeaseAtTime: undefined,
+  getLeaseAtTime: vi.fn(),
+  getLeaseAssociations: vi.fn(),
 });
 
 vi.mock('./hooks/pims-api/useApiAcquisitionFile');

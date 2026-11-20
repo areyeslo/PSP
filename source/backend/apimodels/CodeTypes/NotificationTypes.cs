@@ -38,5 +38,40 @@ namespace Pims.Api.Models.CodeTypes
 
         [EnumMember(Value = "EXPROPH_APPEFFDT")]
         EXPROPH_APPEFFDT,
+
+        [EnumMember(Value = "EXPROPH_ADVPYSVDT")]
+        EXPROPH_ADVPYSVDT,
+
+        [EnumMember(Value = "EXPROPH_VESTDT")]
+        EXPROPH_VESTDT,
+
+        [EnumMember(Value = "L_ORIG_AGMT_EXPDT")]
+        L_ORIG_AGMT_EXPDT,
+
+        [EnumMember(Value = "AGMT_AGMTDT")]
+        AGMT_AGMTDT,
+
+        [EnumMember(Value = "AGMT_COMPTDT")]
+        AGMT_COMPTDT,
+
+        [EnumMember(Value = "AGMT_TERMINDT")]
+        AGMT_TERMINDT,
+        
+        [EnumMember(Value = "AGMT_POSNDT")]
+        AGMT_POSNDT,
+
+        [EnumMember(Value = "DSP_AGMT_AGMTDT")]
+        DSP_AGMT_AGMTDT,
+
+        [EnumMember(Value = "DSP_AGMT_COMPTDT")]
+        DSP_AGMT_COMPTDT,
+
+        [EnumMember(Value = "DSP_AGMT_POSNDT")]
+        DSP_AGMT_POSNDT,
+
+        [EnumMember(Value = "DSP_AGMT_TERMDT")]
+        DSP_AGMT_TERMDT,
+        [EnumMember(Value = "ACQ_DLVDT")]
+        ACQ_DLVDT,
     }
 }

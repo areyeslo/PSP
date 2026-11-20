@@ -46,6 +46,7 @@ using Pims.Api.Repositories.Cdogs;
 using Pims.Api.Repositories.Ches;
 using Pims.Api.Repositories.Ches.Auth;
 using Pims.Api.Repositories.Mayan;
+using Pims.Api.Repositories.PropertyLookup;
 using Pims.Api.Services;
 using Pims.Api.Services.Interfaces;
 using Pims.Av;
@@ -522,7 +523,7 @@ namespace Pims.Api
                 {
                     Predicate = r => r.Tags.Contains(SYSTEMCHECK),
                     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse,
-                });
+                }).RequireAuthorization();
 
                 // Enable the /metrics page to export Prometheus metrics
                 config.MapMetrics();
@@ -535,9 +536,8 @@ namespace Pims.Api
             services.AddScoped<IEdmsDocumentRepository, MayanDocumentRepository>();
             services.AddScoped<IEdmsMetadataRepository, MayanMetadataRepository>();
             services.AddScoped<IDocumentGenerationRepository, CdogsRepository>();
-            services.AddScoped<IDocumentQueueRepository, DocumentQueueRepository>();
             services.AddScoped<IEmailRepository, ChesRepository>();
-            services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<IPropertyPmbcRepository, PropertyPmbcRepository>();
             services.AddSingleton<IEmailAuthRepository, ChesAuthRepository>();
             services.AddSingleton<IDocumentGenerationAuthRepository, CdogsAuthRepository>();
         }
@@ -562,6 +562,7 @@ namespace Pims.Api
             services.AddScoped<IOrganizationService, OrganizationService>();
             services.AddScoped<IResearchFileService, ResearchFileService>();
             services.AddScoped<IPropertyService, PropertyService>();
+            services.AddScoped<IPropertyLookupService, PropertyLookupService>();
             services.AddScoped<ICoordinateTransformService, CoordinateTransformService>();
             services.AddScoped<IDocumentGenerationService, DocumentGenerationService>();
             services.AddScoped<IProjectService, ProjectService>();
@@ -605,6 +606,7 @@ namespace Pims.Api
             services.AddScoped<INotificationInboxService, NotificationInboxService>();
             services.AddScoped<ExpropOwnerHistoryValidator>();
             services.AddScoped<AgreementValidator>();
+            services.AddScoped<DispositionAgreementValidator>();
             services.AddScoped<InsuranceValidator>();
             services.AddScoped<LeaseConsultationValidator>();
             services.AddScoped<LeaseRenewalValidator>();
@@ -632,10 +634,11 @@ namespace Pims.Api
             app.Use(
             async (context, next) =>
             {
-                context.Response.Headers.Append("Strict-Transport-Security", "max-age=86400; includeSubDomains");
-                context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-                context.Response.Headers.Append("X-XSS-Protection", "1");
-                context.Response.Headers.Append("X-Frame-Options", " DENY");
+                // ASP0015: Use strongly-typed properties for built-in, standard system headers
+                context.Response.Headers.StrictTransportSecurity = "max-age=86400; includeSubDomains";
+                context.Response.Headers.XContentTypeOptions = "nosniff";
+                context.Response.Headers.XXSSProtection = "1";
+                context.Response.Headers.XFrameOptions = "DENY";
                 await next().ConfigureAwait(true);
             });
         }

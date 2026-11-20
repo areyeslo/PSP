@@ -1,3 +1,4 @@
+import { ApiGen_CodeTypes_FileTypes } from '@/models/api/generated/ApiGen_CodeTypes_FileTypes';
 import { ApiGen_CodeTypes_NotificationTypes } from '@/models/api/generated/ApiGen_CodeTypes_NotificationTypes';
 import { ApiGen_Concepts_Notification } from '@/models/api/generated/ApiGen_Concepts_Notification';
 import { ApiGen_Concepts_NotificationInboxItem } from '@/models/api/generated/ApiGen_Concepts_NotificationInboxItem';
@@ -15,13 +16,26 @@ export const getParentNotification = (
   return inboxItem?.notificationUser?.notification ?? null;
 };
 
+export const isTakeNotification = (inboxItem: ApiGen_Concepts_NotificationInboxItem): boolean => {
+  switch (getParentNotification(inboxItem)?.notificationTypeCode) {
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_SRW:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LAT:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LTC:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LPYBLE:
+      return true;
+    default:
+      return false;
+  }
+};
+
 /**
  * Returns the in-app deep-link path for a notification, or null when the row has no
- * recognized parent file FK. Sub-entity FKs (take, agreement, consultation, etc.) are
- * routed to the parent file's main screen — sub-tab deep-linking can be layered on later.
+ * recognized destination. Take links require the property-acquisition association ID,
+ * resolved by the caller; this is not the standalone property ID.
  */
 export const getNotificationDeepLink = (
   inboxItem: ApiGen_Concepts_NotificationInboxItem,
+  filePropertyId?: number,
 ): string | null => {
   const notification = getParentNotification(inboxItem);
   if (!exists(notification)) {
@@ -32,9 +46,81 @@ export const getNotificationDeepLink = (
 
   // TODO: Add more deep-links as more notification types are implemented.
   switch (notificationType) {
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_SRW:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LAT:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LTC:
+    case ApiGen_CodeTypes_NotificationTypes.TAKE_LPYBLE:
+      return isValidId(notification.acquisitionFileId) && isValidId(filePropertyId)
+        ? DeepLinkGenerator.showFilePropertyDetail(
+            ApiGen_CodeTypes_FileTypes.Acquisition,
+            notification.acquisitionFileId,
+            filePropertyId,
+            'takes',
+          )
+        : null;
     case ApiGen_CodeTypes_NotificationTypes.L_RENEWAL:
+    case ApiGen_CodeTypes_NotificationTypes.L_INSURANCE:
+    case ApiGen_CodeTypes_NotificationTypes.L_CONSULTFN:
+    case ApiGen_CodeTypes_NotificationTypes.L_ORIG_AGMT_EXPDT:
       return isValidId(notification.leaseId)
-        ? DeepLinkGenerator.showFile('lease', notification.leaseId)
+        ? DeepLinkGenerator.showFile(ApiGen_CodeTypes_FileTypes.Lease, notification.leaseId)
+        : null;
+    case ApiGen_CodeTypes_NotificationTypes.EXPROPH_APPEFFDT:
+    case ApiGen_CodeTypes_NotificationTypes.EXPROPH_ADVPYSVDT:
+    case ApiGen_CodeTypes_NotificationTypes.EXPROPH_VESTDT:
+      return isValidId(notification.acquisitionFileId)
+        ? DeepLinkGenerator.showDetails(
+            ApiGen_CodeTypes_FileTypes.Acquisition,
+            notification.acquisitionFileId,
+            'expropriation',
+          )
+        : null;
+
+    case ApiGen_CodeTypes_NotificationTypes.NOC:
+      // NOC applies to Acquisition or Management files; Acquisition takes precedence when both are set.
+      if (isValidId(notification.acquisitionFileId)) {
+        return DeepLinkGenerator.showDetails(
+          ApiGen_CodeTypes_FileTypes.Acquisition,
+          notification.acquisitionFileId,
+          'fileDetails',
+        );
+      }
+      return isValidId(notification.managementFileId)
+        ? DeepLinkGenerator.showDetails(
+            ApiGen_CodeTypes_FileTypes.Management,
+            notification.managementFileId,
+            'fileDetails',
+          )
+        : null;
+    case ApiGen_CodeTypes_NotificationTypes.ACQ_DLVDT:
+      return isValidId(notification.acquisitionFileId)
+        ? DeepLinkGenerator.showDetails(
+            ApiGen_CodeTypes_FileTypes.Acquisition,
+            notification.acquisitionFileId,
+            'fileDetails',
+          )
+        : null;
+    case ApiGen_CodeTypes_NotificationTypes.AGMT_AGMTDT:
+    case ApiGen_CodeTypes_NotificationTypes.AGMT_COMPTDT:
+    case ApiGen_CodeTypes_NotificationTypes.AGMT_TERMINDT:
+    case ApiGen_CodeTypes_NotificationTypes.AGMT_POSNDT:
+      return isValidId(notification.acquisitionFileId)
+        ? DeepLinkGenerator.showDetails(
+            ApiGen_CodeTypes_FileTypes.Acquisition,
+            notification.acquisitionFileId,
+            'agreements',
+          )
+        : null;
+    case ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_AGMTDT:
+    case ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_COMPTDT:
+    case ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_POSNDT:
+    case ApiGen_CodeTypes_NotificationTypes.DSP_AGMT_TERMDT:
+      return isValidId(notification.dispositionFileId)
+        ? DeepLinkGenerator.showDetails(
+            ApiGen_CodeTypes_FileTypes.Disposition,
+            notification.dispositionFileId,
+            'agreements',
+          )
         : null;
     default:
       return null;

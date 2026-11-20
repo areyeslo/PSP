@@ -314,7 +314,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
   margin-bottom: 2.4rem;
 }
 
-.c43 {
+.c44 {
   color: #474543;
   font-size: 1.6rem;
   -webkit-text-decoration: none;
@@ -338,7 +338,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
   cursor: pointer;
 }
 
-.c42 {
+.c43 {
   padding: 0 0.4rem;
   display: block;
 }
@@ -673,11 +673,11 @@ exports[`AcquisitionView component > renders as expected 1`] = `
   max-width: 60rem;
 }
 
-.c44 {
+.c45 {
   white-space: pre-line;
 }
 
-.c45 {
+.c46 {
   display: -webkit-box;
   display: -webkit-flex;
   display: -ms-flexbox;
@@ -686,6 +686,21 @@ exports[`AcquisitionView component > renders as expected 1`] = `
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
+}
+
+.c42 {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-flex-direction: row;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-align-items: top;
+  -webkit-box-align: top;
+  -ms-flex-align: top;
+  align-items: top;
+  gap: 1.2rem;
 }
 
 @media only screen and (max-width:1199px) {
@@ -1619,7 +1634,14 @@ exports[`AcquisitionView component > renders as expected 1`] = `
                             <div
                               class="c41 text-left col"
                             >
-                              Jul 29, 2022
+                              <div
+                                class="c42"
+                              >
+                                Jul 29, 2022
+                                <div
+                                  data-testid="mock-reminder"
+                                />
+                              </div>
                             </div>
                           </div>
                           <div
@@ -1887,7 +1909,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
                               data-testid="teamMember[0]"
                             >
                               <a
-                                class="c42"
+                                class="c43"
                                 href="/contact/P1"
                                 rel="noopener noreferrer"
                                 target="_blank"
@@ -1929,7 +1951,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
                               data-testid="teamMember[0]"
                             >
                               <a
-                                class="c42"
+                                class="c43"
                                 href="/contact/P3"
                                 rel="noopener noreferrer"
                                 target="_blank"
@@ -1976,7 +1998,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
                           class="collapse show"
                         >
                           <p
-                            class="c43"
+                            class="c44"
                           >
                             Each property in this file should be owned by the owner(s) in this section
                           </p>
@@ -2087,7 +2109,7 @@ exports[`AcquisitionView component > renders as expected 1`] = `
                                 class="c41 text-left col"
                               >
                                 <div
-                                  class="c44"
+                                  class="c45"
                                 >
                                   456 Souris Street
 PO Box 250
@@ -2241,7 +2263,7 @@ Canada
                                 class="c41 text-left col"
                               >
                                 <div
-                                  class="c44"
+                                  class="c45"
                                 >
                                   123 Main Street
 PO Box 123
@@ -2305,7 +2327,7 @@ Canada
                               data-testid="teamMember[0]"
                             >
                               <a
-                                class="c42"
+                                class="c43"
                                 href="/contact/O1"
                                 rel="noopener noreferrer"
                                 target="_blank"
@@ -2365,7 +2387,7 @@ Canada
                               class="c41 text-left col"
                             >
                               <a
-                                class="c45"
+                                class="c46"
                                 href="/contact/P2"
                                 rel="noopener noreferrer"
                                 target="_blank"
@@ -2404,9 +2426,7 @@ Canada
                             </div>
                             <div
                               class="c41 text-left col"
-                            >
-                              test representative comment
-                            </div>
+                            />
                           </div>
                         </div>
                       </div>
@@ -2443,7 +2463,11 @@ Canada
                             </div>
                             <div
                               class="c41 text-left col"
-                            />
+                            >
+                              <div
+                                class="c42"
+                              />
+                            </div>
                           </div>
                           <div
                             class="pb-2 row"

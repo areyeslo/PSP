@@ -1,8 +1,9 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import styled from 'styled-components';
 
 import { ApiGen_Concepts_NotificationInboxItem } from '@/models/api/generated/ApiGen_Concepts_NotificationInboxItem';
 
+import NotificationHeader from './NotificationHeader';
 import NotificationRow from './NotificationRow';
 
 export interface INotificationInboxViewProps {
@@ -24,12 +25,20 @@ export const NotificationInboxView: FC<INotificationInboxViewProps> = ({
   onToggleRead,
   onDelete,
 }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
   if (!isLoading && items.length === 0) {
-    return <EmptyState>You have no notifications.</EmptyState>;
+    return (
+      <Container>
+        <NotificationHeader />
+        <EmptyState>You have no notifications.</EmptyState>
+      </Container>
+    );
   }
 
   return (
     <Container>
+      <NotificationHeader />
       <List>
         {items.map(item => (
           <NotificationRow
@@ -38,6 +47,10 @@ export const NotificationInboxView: FC<INotificationInboxViewProps> = ({
             onSelect={onSelect}
             onToggleRead={onToggleRead}
             onDelete={onDelete}
+            isMenuOpen={openMenuId === item.id}
+            onMenuToggle={isOpen =>
+              setOpenMenuId(current => (isOpen ? item.id : current === item.id ? null : current))
+            }
           />
         ))}
         {isLoading && items.length === 0 && <EmptyState>Loading…</EmptyState>}
